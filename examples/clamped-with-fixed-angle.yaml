@@ -1,0 +1,30 @@
+method: c0
+
+mesh:
+  type: RectangleMesh
+  parameters:
+    nx: 10
+    ny: 10
+    Lx: 1
+    Ly: 0.5
+
+function_space:
+  V:
+    degree: 2
+  Q:
+    degree: 1
+
+f: ['0', '0', '-2.5']
+
+boundary_conditions:
+  sub_domain: [1]
+  g: ['x[0]', 'x[1]', '0']
+  phi: [['2**(-0.5)', '0'], ['0', '1'], ['2**(-0.5)', '0']]
+  r: 1
+
+initial_guess:
+  y0: ['x[0]', 'x[1]', '0']
+  u0: null
+  p0: null
+
+solver_parameters: null

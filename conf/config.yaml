@@ -1,0 +1,79 @@
+hydra:
+  help:
+    app_name: Biharmonic Solver
+
+    header: |
+      ${hydra.help.app_name} is powered by Hydra.
+
+    footer: |
+      Powered by Hydra (https://hydra.cc)
+      Use --hydra-help to view Hydra specific help
+
+    template: |
+      This is a numerical solver the for biharmonic equations.
+
+      To run the solver, followling these steps:
+        1. modify the file [config.yaml] in the directory [conf].
+        2. check [biharmonic_solver.py].
+          (e.g. the path of [plot_deformation] within [run])
+        3. simply run the command:
+          python biharmonic_solver.py
+
+      Additional solution post-processing or analysis (e.g., visualization
+      for ParaView) can be implemented in the [run] function within
+      [biharmonic_solver.py].
+
+      Supported Configuration Settings:
+      - method:
+        - c0: C^0 interior penalty
+        - mix: Mixed formulation using 'u = grad(y)'
+      - mesh: RectangleMesh, SquareMesh
+      - boundary_conditions: Dirichlet conditions, mixed boundary condtions
+
+      Example Problems:
+      - compressive-buckling
+      - clamped-with-fixed-angle
+
+      Run Example:
+        python biharmonic_solver.py -cp examples -cn compressive-buckling
+
+      Specify solving method:
+        python biharmonic_solver.py method='mix'
+      
+      WARNING:
+      1. Use list of str to specify expression of functions.
+      2. Use null instead of None in configuration files.
+      3. Refer to how to set [solver_parameters] for the example
+        [compressive-buckling].
+
+      ${hydra.help.footer}
+
+method: c0
+
+mesh:
+  type: SquareMesh
+  parameters:
+    nx: 10
+    ny: 10
+    L: 1
+
+function_space:
+  V:
+    degree: 2
+  Q:
+    degree: 1
+
+f: ['0', '0', '0']
+
+boundary_conditions:
+  sub_domain: [1]
+  g: ['x[0]', 'x[1]', '0']
+  phi: null
+  r: 1
+
+initial_guess:
+  y0: ['x[0]', 'x[1]', '0']
+  u0: null
+  p0: null
+
+solver_parameters: null
