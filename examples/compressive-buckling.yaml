@@ -21,6 +21,7 @@ boundary_conditions:
   g: ['conditional(lt(x[0], 0), x[0] + 1.4, x[0] - 1.4)', 'x[1]', '0']
   phi: [['1', '0'], ['0', '1'], ['0', '0']]
   r: 1e2
+  r0: 1e2
 
 initial_guess:
   y0: ['x[0]', 'x[1]', '0']

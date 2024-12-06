@@ -25,10 +25,15 @@ class BiharmonicProblem:
         fs_cfg = self.config['function_space']
         if self.method == 'c0':
             fs = VectorFunctionSpace(self.mesh, 'CG', degree=fs_cfg['V']['degree'], dim=3)
+
+        elif self.method == 'dg':
+            fs = VectorFunctionSpace(self.mesh, 'DG', degree=fs_cfg['V']['degree'], dim=3)
+
         elif self.method == 'mix':
             V = VectorFunctionSpace(self.mesh, 'CG', degree=fs_cfg['V']['degree'], dim=3)
             Q = TensorFunctionSpace(self.mesh, 'CG', degree=fs_cfg['Q']['degree'], shape=(3, 2))
             fs = V*Q*Q
+
         else:
             raise NotImplementedError
         return fs
@@ -51,9 +56,10 @@ class BiharmonicProblem:
             solver_parameters = dict(self.config['solver_parameters'])
         else:
             solver_parameters = {}
+
         r = Constant(bcs_cfg['r'])
 
-        if self.method == 'c0':
+        if self.method in {'c0', 'dg'}:
             V = self.function_space
             f = Function(V).interpolate(f_expr)
             g = Function(V).interpolate(g_expr)
@@ -69,12 +75,25 @@ class BiharmonicProblem:
             E = (inner(grad(grad(y)), grad(grad(y))) - dot(y, f))*dx
             E += dot(dot(jump(grad(y)), n('+')), dot(dot(avg(grad(grad(y))), n('+')), n('+')))*dS
             E += r*dot(dot(jump(grad(y)), n('+')), dot(jump(grad(y)), n('+')))/(2*h)*dS
+
             if bcs_cfg['phi']:
                 E += dot(dot(grad(y)-phi, n), dot(dot(grad(grad(y)), n), n))*ds(sub_domain)
                 E += r*dot(dot(grad(y)-phi, n), dot(grad(y)-phi, n))/(2*h)*ds(sub_domain)
-            F = derivative(E, y)
-            bc = DirichletBC(V, g, sub_domain)
-            solve(F==0, y, bcs=[bc], solver_parameters=solver_parameters)
+
+            if self.method == 'dg':
+                r0 = Constant(bcs_cfg['r0'])
+                E += dot(dot(avg(div(grad(grad(y)))), n('+')), jump(y))*dS
+                E += dot(dot(div(grad(grad(y))), n), y-g)*ds(sub_domain)
+                E += r0*dot(jump(y), jump(y))/(2*h**(3/2))*dS
+                E += r0*dot(y-g, y-g)/(2*h**(3/2))*ds(sub_domain)
+                F = derivative(E, y)
+                solve(F == 0, y, solver_parameters=solver_parameters)
+
+            elif self.method == 'c0':
+                F = derivative(E, y)
+                bc = DirichletBC(V, g, sub_domain)
+                solve(F == 0, y, bcs=[bc], solver_parameters=solver_parameters)
+
             return y
 
         elif self.method == 'mix':
@@ -100,13 +119,15 @@ class BiharmonicProblem:
                 z.assign(z0)
 
             y, u, p = split(z)
-            E = (inner(grad(u), grad(u)) + inner(grad(grad(y)), grad(grad(y))))/4*dx
+            E = (inner(grad(u), grad(u)) + inner(grad(grad(y)), grad(grad(y))))*dx
             E -= dot(y, f)*dx
             E += inner(p, grad(y) - u)*dx
             E -= inner(dot(avg(grad(u)), n('+')), jump(u))*dS
-            E -= inner(dot(grad(u), n), u - phi)*ds(sub_domain)
             E += r*inner(jump(u), jump(u))/(2*h)*dS
-            E += r*inner(u - phi, u - phi)/(2*h)*ds(sub_domain)
+
+            if bcs_cfg['phi']:
+                E -= inner(dot(grad(u), n), u - phi)*ds(sub_domain)
+                E += r*inner(u - phi, u - phi)/(2*h)*ds(sub_domain)
             F = derivative(E, z)
 
             bc = DirichletBC(Z.sub(0), g, sub_domain)
